@@ -195,24 +195,25 @@ jobs:
           systemctl enable nginx && systemctl start nginx
 
           # CloudWatch Logs agent for application monitoring
-yum install -y amazon-cloudwatch-agent 2>/dev/null || true
-cat > /opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-config.json << 'CWEOF'
-{
-  "logs": {
-    "logs_collected": {
-      "files": {
-        "collect_list": [
-          {"file_path": "/var/log/messages", "log_group_name": "constructtrack-system"},
-          {"file_path": "/var/log/nginx/*.log", "log_group_name": "constructtrack-nginx"}
-        ]
-      }
-    }
-  }
-}
-CWEOF
-amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-config.json 2>/dev/null || true
+          yum install -y amazon-cloudwatch-agent 2>/dev/null || true
+          mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
+          cat > /opt/aws/amazon-cloudwatch-agent/etc/cw-config.json << 'CWCFG'
+          {
+            "logs": {
+              "logs_collected": {
+                "files": {
+                  "collect_list": [
+                    {"file_path": "/var/log/messages", "log_group_name": "constructtrack-system"},
+                    {"file_path": "/var/log/nginx/access.log", "log_group_name": "constructtrack-nginx"}
+                  ]
+                }
+              }
+            }
+          }
+          CWCFG
+          amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/cw-config.json 2>/dev/null || true
 
-echo "SETUP DONE"
+          echo "SETUP DONE"
           EOF
 
           # Launch
