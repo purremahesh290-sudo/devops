@@ -102,7 +102,7 @@ const EditProject = () => {
   return (
     <div className="edit-project-page">
       <div className="edit-project-header">
-        <h1>&#x270F; Edit Project</h1>
+        <h1>Edit Project</h1>
         <p>Update project details</p>
       </div>
 

@@ -76,7 +76,7 @@ const AddTask = () => {
   return (
     <div className="add-task-page">
       <div className="add-task-header">
-        <h1>&#x2795; Add Task</h1>
+        <h1>Add Task</h1>
         <p>Create a new task for this project</p>
       </div>
 

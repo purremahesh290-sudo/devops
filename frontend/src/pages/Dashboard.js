@@ -74,7 +74,7 @@ const Dashboard = () => {
   return (
     <div className="dashboard-page">
       <div className="dashboard-header">
-        <h1>&#x1F4CA; Project Dashboard</h1>
+        <h1>Project Dashboard</h1>
         <p>Overview of all construction projects</p>
       </div>
 
@@ -82,28 +82,28 @@ const Dashboard = () => {
 
       <div className="dashboard-stats">
         <div className="stat-card">
-          <div className="stat-icon total">&#x1F3D7;</div>
+          <div className="stat-icon total"></div>
           <div className="stat-info">
             <h3>{totalProjects}</h3>
             <p>Total Projects</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon progress">&#x1F6A7;</div>
+          <div className="stat-icon progress"></div>
           <div className="stat-info">
             <h3>{inProgressCount}</h3>
             <p>In Progress</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon completed">&#x2705;</div>
+          <div className="stat-icon completed"></div>
           <div className="stat-info">
             <h3>{completedCount}</h3>
             <p>Completed</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon budget">&#x1F4B0;</div>
+          <div className="stat-icon budget"></div>
           <div className="stat-info">
             <h3>{formatBudget(totalBudget)}</h3>
             <p>Total Budget</p>
@@ -120,7 +120,7 @@ const Dashboard = () => {
 
       {projects.length === 0 ? (
         <div className="dashboard-empty">
-          <span className="dashboard-empty-icon">&#x1F3D7;</span>
+          
           <h3>No Projects Yet</h3>
           <p>Create your first construction project to get started.</p>
           <Link to="/projects/create" className="dashboard-create-btn">

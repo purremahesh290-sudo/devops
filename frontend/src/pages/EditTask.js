@@ -115,7 +115,7 @@ const EditTask = () => {
   return (
     <div className="edit-task-page">
       <div className="edit-task-header">
-        <h1>&#x270F; Edit Task</h1>
+        <h1>Edit Task</h1>
         <p>Update task details and progress</p>
       </div>
 

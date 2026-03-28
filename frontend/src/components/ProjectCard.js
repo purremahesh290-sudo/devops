@@ -56,7 +56,7 @@ const ProjectCard = ({ project }) => {
         <div>
           <h3 className="project-card-name">{project.name}</h3>
           <div className="project-card-location">
-            &#x1F4CD; {project.location || 'No location'}
+            {project.location || 'No location'}
           </div>
         </div>
         <span className={`status-badge ${project.status}`}>

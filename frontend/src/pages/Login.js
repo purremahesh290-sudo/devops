@@ -71,7 +71,7 @@ const Login = () => {
     <div className="login-page">
       <div className="login-left">
         <div className="login-left-content">
-          <span className="login-hero-icon">&#x1F3D7;</span>
+          
           <h1 className="login-hero-title">ConstructTrack</h1>
           <p className="login-hero-subtitle">
             Your all-in-one construction project management solution.
@@ -83,7 +83,7 @@ const Login = () => {
       <div className="login-right">
         <div className="login-form-container">
           <div className="login-form-header">
-            <h2>&#x1F477; Sign In</h2>
+            <h2>Sign In</h2>
             <p>Enter your credentials to access your projects</p>
           </div>
 
@@ -120,7 +120,7 @@ const Login = () => {
           </form>
 
           <div className="login-demo-box">
-            <h4>&#x1F6E0; Examiner Access</h4>
+            <h4>Examiner Access</h4>
             <div className="demo-credentials">
               <p>Username: <code>examiner</code></p>
               <p>Password: <code>ConstructTrack2024</code></p>

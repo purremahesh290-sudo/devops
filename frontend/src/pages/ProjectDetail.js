@@ -140,7 +140,7 @@ const ProjectDetail = () => {
   return (
     <div className="project-detail-page">
       <button className="project-detail-back" onClick={() => navigate('/dashboard')}>
-        &#x2190; Back to Dashboard
+        Back to Dashboard
       </button>
 
       {error && <div className="project-detail-error" style={{ marginBottom: 16 }}>{error}</div>}
@@ -150,7 +150,7 @@ const ProjectDetail = () => {
           <div>
             <h1 className="project-detail-title">{project.name}</h1>
             <div className="project-detail-location">
-              &#x1F4CD; {project.location || 'No location set'}
+              {project.location || 'No location set'}
             </div>
           </div>
           <div className="project-detail-actions">

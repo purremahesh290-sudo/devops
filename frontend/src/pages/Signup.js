@@ -63,7 +63,7 @@ const Signup = () => {
     <div className="signup-page">
       <div className="signup-card">
         <div className="signup-header">
-          <h2>&#x1F3D7; Create Account</h2>
+          <h2>Create Account</h2>
           <p>Join ConstructTrack to manage your projects</p>
         </div>
 

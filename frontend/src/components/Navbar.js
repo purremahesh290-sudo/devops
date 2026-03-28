@@ -30,7 +30,7 @@ const Navbar = () => {
   return (
     <nav className="navbar">
       <Link to="/dashboard" className="navbar-brand">
-        <span className="navbar-brand-icon">&#x1F3D7;</span>
+        
         <span>ConstructTrack</span>
       </Link>
 

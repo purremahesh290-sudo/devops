@@ -67,7 +67,7 @@ const CreateProject = () => {
   return (
     <div className="create-project-page">
       <div className="create-project-header">
-        <h1>&#x1F3D7; New Project</h1>
+        <h1>New Project</h1>
         <p>Create a new construction project</p>
       </div>
 
