@@ -1,0 +1,146 @@
+/**
+ * CreateProject page styles - Form with orange theme.
+ */
+
+.create-project-page {
+  padding: 24px 0;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.create-project-header {
+  margin-bottom: 28px;
+}
+
+.create-project-header h1 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+}
+
+.create-project-header p {
+  color: #888;
+  font-size: 0.95rem;
+}
+
+.create-project-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.create-project-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.create-project-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.create-project-form .form-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.create-project-form .form-group input,
+.create-project-form .form-group textarea,
+.create-project-form .form-group select {
+  padding: 12px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.create-project-form .form-group input:focus,
+.create-project-form .form-group textarea:focus,
+.create-project-form .form-group select:focus {
+  border-color: #e65100;
+  box-shadow: 0 0 0 3px rgba(230, 81, 0, 0.1);
+}
+
+.create-project-form textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.create-project-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.create-project-submit {
+  flex: 1;
+  padding: 14px;
+  background: linear-gradient(135deg, #e65100 0%, #bf360c 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  transition: all 0.3s ease;
+}
+
+.create-project-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(230, 81, 0, 0.35);
+}
+
+.create-project-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.create-project-cancel {
+  padding: 14px 28px;
+  background: #f5f5f5;
+  color: #555;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.create-project-cancel:hover {
+  background: #eeeeee;
+  border-color: #ccc;
+}
+
+.create-project-error {
+  background: #ffebee;
+  color: #c62828;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-left: 4px solid #c62828;
+}
+
+@media (max-width: 600px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .create-project-card {
+    padding: 24px;
+  }
+}

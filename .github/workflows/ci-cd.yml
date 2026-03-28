@@ -1,0 +1,409 @@
+name: Construction Progress Tracker CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+  AWS_REGION: us-east-1
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Job 1: Build and Test
+  # ──────────────────────────────────────────────
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # ── Backend ──
+      - name: Backend - Install dependencies
+        run: pip install -r requirements-dev.txt
+        working-directory: backend/
+
+      - name: Backend - Run Tests with Coverage
+        run: python -m pytest tests/ -v --cov=app --cov-report=xml:coverage.xml --cov-report=html:htmlcov
+        working-directory: backend/
+
+      - name: Upload Backend Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-report
+          path: |
+            backend/coverage.xml
+            backend/htmlcov/
+          if-no-files-found: ignore
+
+      # ── Frontend ──
+      - name: Frontend - Install dependencies
+        run: npm install
+        working-directory: frontend/
+
+      - name: Frontend - Build
+        run: npm run build
+        working-directory: frontend/
+
+      - name: Frontend - Run Tests with Coverage
+        run: npm test -- --watchAll=false --coverage
+        working-directory: frontend/
+        env:
+          CI: true
+
+      - name: Upload Frontend Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage-report
+          path: frontend/coverage/
+          if-no-files-found: ignore
+
+  # ──────────────────────────────────────────────
+  # Job 2: Static Analysis
+  # ──────────────────────────────────────────────
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Backend - Install dependencies
+        run: pip install -r requirements-dev.txt
+        working-directory: backend/
+
+      # ── Bandit (Security Linter for Python) ──
+      - name: Backend - Bandit Security Analysis
+        run: bandit -r app/ -f json -o bandit-report.json || true
+        working-directory: backend/
+
+      - name: Backend - Bandit Results Summary
+        if: always()
+        run: bandit -r app/ -f screen || true
+        working-directory: backend/
+
+      # ── Pylint (Code Quality) ──
+      - name: Backend - Pylint Analysis
+        run: pylint app/ --output-format=json:pylint-report.json,colorized --fail-under=5 || true
+        working-directory: backend/
+
+      # ── Safety (Dependency Vulnerability Check) ──
+      - name: Backend - Safety Dependency Check
+        run: pip install safety && safety check --output json > safety-report.json 2>&1 || true
+        working-directory: backend/
+
+      # ── Flake8 (Style Check) ──
+      - name: Backend - Flake8 Style Check
+        run: flake8 app/ --max-line-length=120 --statistics --output-file=flake8-report.txt || true
+        working-directory: backend/
+
+      # ── SonarCloud (optional) ──
+      - name: SonarCloud Scan
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.organization=${{ secrets.SONAR_ORG }}
+            -Dsonar.host.url=https://sonarcloud.io
+        continue-on-error: true
+
+      # ── Frontend Analysis ──
+      - name: Frontend - Install dependencies
+        run: npm install
+        working-directory: frontend/
+
+      - name: Frontend - npm audit
+        run: npm audit --audit-level=moderate || true
+        working-directory: frontend/
+
+      - name: Frontend - ESLint Analysis
+        run: npx eslint src/ --format json --output-file eslint-report.json || true
+        working-directory: frontend/
+
+      # ── Upload Reports ──
+      - name: Upload Bandit Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: backend/bandit-report.json
+          if-no-files-found: ignore
+
+      - name: Upload Pylint Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pylint-report
+          path: backend/pylint-report.json
+          if-no-files-found: ignore
+
+      - name: Upload Safety Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: safety-report
+          path: backend/safety-report.json
+          if-no-files-found: ignore
+
+      - name: Upload Flake8 Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flake8-report
+          path: backend/flake8-report.txt
+          if-no-files-found: ignore
+
+      - name: Upload ESLint Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eslint-report
+          path: frontend/eslint-report.json
+          if-no-files-found: ignore
+
+  # ──────────────────────────────────────────────
+  # Job 3: Security Scan
+  # ──────────────────────────────────────────────
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── Trivy ──
+      - name: Trivy Filesystem Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          output: trivy-results.txt
+          severity: CRITICAL,HIGH,MEDIUM
+
+      - name: Display Trivy Results
+        if: always()
+        run: cat trivy-results.txt
+
+      - name: Upload Trivy Scan Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-results
+          path: trivy-results.txt
+          if-no-files-found: ignore
+
+      # ── OWASP ZAP (only after infra is deployed) ──
+      - name: Configure AWS Credentials
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+        continue-on-error: true
+
+      - name: Get EC2 Host for ZAP Scan
+        id: get-ec2
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          EC2_IP=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=constructtrack-server" "Name=instance-state-name,Values=running" \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' --output text 2>/dev/null) || true
+          echo "ec2_ip=$EC2_IP" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: OWASP ZAP Baseline Scan
+        if: steps.get-ec2.outputs.ec2_ip != '' && steps.get-ec2.outputs.ec2_ip != 'None'
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: http://${{ steps.get-ec2.outputs.ec2_ip }}
+          rules_file_name: .zap/rules.tsv
+          cmd_options: '-a'
+          allow_issue_writing: false
+        continue-on-error: true
+
+      - name: Upload ZAP Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: report_html.html
+          if-no-files-found: ignore
+
+  # ──────────────────────────────────────────────
+  # Job 4: Deploy to AWS
+  # ──────────────────────────────────────────────
+  deploy:
+    name: Deploy to AWS
+    runs-on: ubuntu-latest
+    needs: [static-analysis, security-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ── Get EC2 IP ──
+      - name: Get EC2 IP
+        id: infra
+        run: |
+          EC2_IP=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=constructtrack-server" "Name=instance-state-name,Values=running" \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
+          echo "EC2 IP: $EC2_IP"
+          echo "ec2_ip=$EC2_IP" >> $GITHUB_OUTPUT
+
+      # ── Get SSH Key ──
+      - name: Retrieve SSH Key
+        run: |
+          aws ssm get-parameter --name "/constructtrack/ec2-key" \
+            --with-decryption --query 'Parameter.Value' --output text > ec2_key.pem
+          chmod 600 ec2_key.pem
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ steps.infra.outputs.ec2_ip }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      # ── Package Backend ──
+      - name: Backend - Package Application
+        run: |
+          tar -czf /tmp/backend.tar.gz -C backend .
+        working-directory: .
+
+      # ── Build Frontend ──
+      - name: Frontend - Install dependencies
+        run: npm install
+        working-directory: frontend/
+
+      - name: Frontend - Build for production
+        run: npm run build
+        working-directory: frontend/
+        env:
+          REACT_APP_API_URL: http://${{ steps.infra.outputs.ec2_ip }}/api
+
+      # ── Deploy to EC2 ──
+      - name: Deploy Backend
+        run: |
+          scp -i ec2_key.pem -o StrictHostKeyChecking=no \
+            /tmp/backend.tar.gz \
+            ec2-user@${{ steps.infra.outputs.ec2_ip }}:/tmp/backend.tar.gz
+
+      - name: Deploy Frontend Build
+        run: |
+          tar -czf /tmp/frontend.tar.gz -C frontend/build .
+          scp -i ec2_key.pem -o StrictHostKeyChecking=no \
+            /tmp/frontend.tar.gz \
+            ec2-user@${{ steps.infra.outputs.ec2_ip }}:/tmp/frontend.tar.gz
+
+      - name: Start Application
+        run: |
+          ssh -i ec2_key.pem -o StrictHostKeyChecking=no \
+            ec2-user@${{ steps.infra.outputs.ec2_ip }} << 'ENDSSH'
+
+            # Deploy backend - extract to temp dir first, then move to app location
+            sudo mkdir -p /opt/constructtrack /tmp/constructtrack-deploy
+            sudo rm -rf /tmp/constructtrack-deploy/*
+            sudo tar -xzf /tmp/backend.tar.gz -C /tmp/constructtrack-deploy/
+
+            # Set up the correct directory structure for the Python app
+            sudo rm -rf /opt/constructtrack/app
+            sudo mkdir -p /opt/constructtrack/app
+            sudo cp -r /tmp/constructtrack-deploy/app/* /opt/constructtrack/app/
+            sudo cp /tmp/constructtrack-deploy/requirements.txt /opt/constructtrack/requirements.txt
+
+            # Create Python virtual environment and install dependencies
+            sudo python3 -m venv /opt/constructtrack/venv
+            sudo /opt/constructtrack/venv/bin/pip install --upgrade pip
+            sudo /opt/constructtrack/venv/bin/pip install -r /opt/constructtrack/requirements.txt
+
+            sudo chown -R constructtrack:constructtrack /opt/constructtrack
+            rm -rf /tmp/constructtrack-deploy
+
+            # Deploy frontend
+            sudo rm -rf /var/www/constructtrack/*
+            sudo tar -xzf /tmp/frontend.tar.gz -C /var/www/constructtrack/
+            sudo chown -R nginx:nginx /var/www/constructtrack/
+
+            # Restart services
+            sudo systemctl restart constructtrack || sudo systemctl start constructtrack
+            sudo systemctl restart nginx
+
+            sleep 5
+            sudo systemctl status constructtrack --no-pager || true
+            echo "=== Deployment Complete ==="
+          ENDSSH
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ec2_key.pem
+
+      - name: Verify Deployment
+        run: |
+          echo "============================================="
+          echo "  Deployment Complete!"
+          echo "============================================="
+          echo "  App: http://${{ steps.infra.outputs.ec2_ip }}"
+          echo "  API: http://${{ steps.infra.outputs.ec2_ip }}/api"
+          echo "============================================="
+          sleep 10
+          curl -s http://${{ steps.infra.outputs.ec2_ip }}/actuator/health || echo "Starting up..."

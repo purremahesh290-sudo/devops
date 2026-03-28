@@ -1,0 +1,374 @@
+/**
+ * ProjectDetail page styles - Project info with task list.
+ */
+
+.project-detail-page {
+  padding: 24px 0;
+}
+
+.project-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #e65100;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.project-detail-back:hover {
+  color: #bf360c;
+}
+
+.project-detail-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
+}
+
+.project-detail-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.project-detail-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #1a1a2e;
+  margin-bottom: 6px;
+}
+
+.project-detail-location {
+  color: #888;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.project-detail-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.project-edit-btn,
+.project-delete-btn {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.project-edit-btn {
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffcc80;
+}
+
+.project-edit-btn:hover {
+  background: #ffe0b2;
+}
+
+.project-delete-btn {
+  background: #ffebee;
+  color: #c62828;
+  border: 1px solid #ef9a9a;
+}
+
+.project-delete-btn:hover {
+  background: #ffcdd2;
+}
+
+.project-detail-progress-section {
+  margin-bottom: 28px;
+}
+
+.project-detail-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.project-detail-progress-label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.project-detail-progress-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #e65100;
+}
+
+.project-detail-progress-bar {
+  width: 100%;
+  height: 14px;
+  background: #f0f0f0;
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.project-detail-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e65100, #ff8f00);
+  border-radius: 7px;
+  transition: width 0.5s ease;
+}
+
+.project-detail-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  padding: 20px 0;
+  border-top: 1px solid #f0f0f0;
+}
+
+.project-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.project-info-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.project-info-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.project-description {
+  padding: 20px 0;
+  border-top: 1px solid #f0f0f0;
+}
+
+.project-description h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 8px;
+}
+
+.project-description p {
+  color: #666;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* Tasks Section */
+.tasks-section {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.tasks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.tasks-header h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.add-task-btn {
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #e65100, #bf360c);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+}
+
+.add-task-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(230, 81, 0, 0.3);
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.task-item {
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  padding: 16px 20px;
+  transition: all 0.2s ease;
+}
+
+.task-item:hover {
+  background: #fff8f0;
+  border-color: #ffcc80;
+}
+
+.task-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  gap: 12px;
+}
+
+.task-item-info h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+}
+
+.task-item-assigned {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.task-status-badge {
+  padding: 3px 10px;
+  border-radius: 16px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.task-status-badge.PENDING {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.task-status-badge.IN_PROGRESS {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.task-status-badge.COMPLETED {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.task-status-badge.BLOCKED {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.task-item-progress {
+  margin-bottom: 10px;
+}
+
+.task-progress-track {
+  width: 100%;
+  height: 6px;
+  background: #e0e0e0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.task-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e65100, #ff8f00);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.task-item-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.task-item-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 0.78rem;
+  color: #888;
+}
+
+.task-item-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.task-edit-btn,
+.task-delete-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.task-edit-btn {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.task-edit-btn:hover {
+  background: #ffe0b2;
+}
+
+.task-delete-btn {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.task-delete-btn:hover {
+  background: #ffcdd2;
+}
+
+.tasks-empty {
+  text-align: center;
+  padding: 40px;
+  color: #888;
+}
+
+.tasks-empty p {
+  font-size: 0.95rem;
+}
+
+.project-detail-loading {
+  text-align: center;
+  padding: 60px;
+  color: #e65100;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.project-detail-error {
+  background: #ffebee;
+  color: #c62828;
+  padding: 16px 20px;
+  border-radius: 10px;
+  font-weight: 500;
+  border-left: 4px solid #c62828;
+}

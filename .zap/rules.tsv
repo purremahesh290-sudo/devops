@@ -1,0 +1,7 @@
+10010	IGNORE	(Cookie No HttpOnly Flag)
+10011	IGNORE	(Cookie Without Secure Flag)
+10015	IGNORE	(Incomplete or No Cache-control)
+10021	IGNORE	(X-Content-Type-Options Header Missing)
+10038	IGNORE	(Content Security Policy)
+10098	IGNORE	(Cross-Domain Misconfiguration)
+10202	IGNORE	(Absence of Anti-CSRF Tokens)

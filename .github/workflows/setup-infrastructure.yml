@@ -1,0 +1,282 @@
+name: Setup AWS Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - deploy
+          - destroy
+
+env:
+  AWS_REGION: us-east-1
+  APP_NAME: constructtrack
+
+jobs:
+  infrastructure:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ═══════════ DEPLOY ═══════════
+      - name: Create Security Group
+        if: ${{ github.event.inputs.action == 'deploy' }}
+        id: sg
+        run: |
+          # Use default VPC
+          VPC_ID=$(aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --query 'Vpcs[0].VpcId' --output text)
+          echo "Default VPC: $VPC_ID"
+
+          # Check if SG exists
+          SG_ID=$(aws ec2 describe-security-groups \
+            --filters "Name=group-name,Values=${{ env.APP_NAME }}-sg" "Name=vpc-id,Values=$VPC_ID" \
+            --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null) || true
+
+          if [ "$SG_ID" != "None" ] && [ -n "$SG_ID" ]; then
+            echo "SG exists: $SG_ID"
+          else
+            SG_ID=$(aws ec2 create-security-group \
+              --group-name ${{ env.APP_NAME }}-sg \
+              --description "ConstructTrack App" \
+              --vpc-id $VPC_ID --query 'GroupId' --output text)
+            aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 22 --cidr 0.0.0.0/0
+            aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 80 --cidr 0.0.0.0/0
+            aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 443 --cidr 0.0.0.0/0
+            aws ec2 authorize-security-group-ingress --group-id $SG_ID --protocol tcp --port 8080 --cidr 0.0.0.0/0
+            echo "SG created: $SG_ID"
+          fi
+          echo "sg_id=$SG_ID" >> $GITHUB_OUTPUT
+
+      - name: Create Key Pair
+        if: ${{ github.event.inputs.action == 'deploy' }}
+        run: |
+          aws ec2 describe-key-pairs --key-names ${{ env.APP_NAME }}-key 2>/dev/null && {
+            echo "Key pair already exists"
+            exit 0
+          }
+          aws ec2 create-key-pair --key-name ${{ env.APP_NAME }}-key \
+            --query 'KeyMaterial' --output text > /tmp/key.pem
+          aws ssm put-parameter --name "/constructtrack/ec2-key" \
+            --value "$(cat /tmp/key.pem)" --type SecureString --overwrite
+          rm /tmp/key.pem
+          echo "Key pair created and stored in SSM"
+
+      - name: Launch EC2 Instance
+        if: ${{ github.event.inputs.action == 'deploy' }}
+        id: ec2
+        run: |
+          # Check if already running
+          EXISTING=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=${{ env.APP_NAME }}-server" "Name=instance-state-name,Values=running" \
+            --query 'Reservations[0].Instances[0].InstanceId' --output text 2>/dev/null) || true
+          if [ "$EXISTING" != "None" ] && [ -n "$EXISTING" ]; then
+            IP=$(aws ec2 describe-instances --instance-ids $EXISTING \
+              --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
+            echo "EC2 exists: $EXISTING ($IP)"
+            echo "ec2_ip=$IP" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Get AMI
+          AMI_ID=$(aws ssm get-parameters \
+            --names /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64 \
+            --query 'Parameters[0].Value' --output text)
+
+          # User data script - Python FastAPI setup
+          cat > /tmp/setup.sh << 'EOF'
+          #!/bin/bash
+          set -ex
+          exec > /var/log/user-data.log 2>&1
+
+          # Python 3.11 and pip
+          yum install -y python3.11 python3.11-pip python3.11-devel gcc
+
+          # Create python3 symlink if needed
+          alternatives --set python3 /usr/bin/python3.11 2>/dev/null || true
+          ln -sf /usr/bin/python3.11 /usr/local/bin/python3
+          ln -sf /usr/bin/pip3.11 /usr/local/bin/pip3
+
+          # PostgreSQL 15
+          yum install -y postgresql15-server postgresql15
+          postgresql-setup --initdb
+          systemctl enable postgresql && systemctl start postgresql
+          sudo -u postgres psql -c "CREATE USER constructtrack WITH PASSWORD 'ConstructTrack2024';"
+          sudo -u postgres psql -c "CREATE DATABASE constructtrack OWNER constructtrack;"
+          sed -i 's/ident/md5/g' /var/lib/pgsql/data/pg_hba.conf
+          sed -i 's/peer/md5/g' /var/lib/pgsql/data/pg_hba.conf
+          systemctl restart postgresql
+
+          # Nginx
+          yum install -y nginx
+
+          # App setup
+          useradd -r -s /bin/false constructtrack 2>/dev/null || true
+          mkdir -p /opt/constructtrack /var/www/constructtrack
+          chown constructtrack:constructtrack /opt/constructtrack
+
+          # Environment file for the FastAPI application
+          cat > /opt/constructtrack/.env << 'ENVFILE'
+          DATABASE_URL=postgresql://constructtrack:ConstructTrack2024@localhost:5432/constructtrack
+          JWT_SECRET_KEY=cGxhbnRjYXJlSldUU2VjcmV0S2V5Rm9yUHJvZHVjdGlvbjIwMjRTZWN1cmVLZXk=
+          DEBUG=false
+          ENVFILE
+          chmod 600 /opt/constructtrack/.env && chown constructtrack:constructtrack /opt/constructtrack/.env
+
+          # Systemd service for FastAPI with Uvicorn
+          cat > /etc/systemd/system/constructtrack.service << 'SVCFILE'
+          [Unit]
+          Description=ConstructTrack FastAPI Backend
+          After=network.target postgresql.service
+
+          [Service]
+          Type=simple
+          User=constructtrack
+          WorkingDirectory=/opt/constructtrack
+          EnvironmentFile=/opt/constructtrack/.env
+          ExecStart=/opt/constructtrack/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8080
+          Restart=on-failure
+          RestartSec=10
+          SuccessExitStatus=143
+
+          [Install]
+          WantedBy=multi-user.target
+          SVCFILE
+          systemctl daemon-reload && systemctl enable constructtrack
+
+          # Nginx: serve frontend + proxy API to FastAPI backend
+          cat > /etc/nginx/conf.d/constructtrack.conf << 'NGXFILE'
+          server {
+              listen 80;
+              root /var/www/constructtrack;
+              index index.html;
+
+              # Security headers
+              add_header X-Frame-Options "SAMEORIGIN" always;
+              add_header X-Content-Type-Options "nosniff" always;
+              add_header X-XSS-Protection "1; mode=block" always;
+              add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+              # Proxy API requests to FastAPI backend
+              location /api/ {
+                  proxy_pass http://127.0.0.1:8080/api/;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+
+              # Health check endpoint
+              location /actuator/health {
+                  proxy_pass http://127.0.0.1:8080/actuator/health;
+              }
+
+              # Serve React frontend with client-side routing
+              location / {
+                  try_files $uri $uri/ /index.html;
+              }
+
+              # Deny access to hidden files
+              location ~ /\. {
+                  deny all;
+              }
+          }
+          NGXFILE
+          rm -f /etc/nginx/conf.d/default.conf
+          systemctl enable nginx && systemctl start nginx
+
+          # CloudWatch Logs agent for application monitoring
+yum install -y amazon-cloudwatch-agent 2>/dev/null || true
+cat > /opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-config.json << 'CWEOF'
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {"file_path": "/var/log/messages", "log_group_name": "constructtrack-system"},
+          {"file_path": "/var/log/nginx/*.log", "log_group_name": "constructtrack-nginx"}
+        ]
+      }
+    }
+  }
+}
+CWEOF
+amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-config.json 2>/dev/null || true
+
+echo "SETUP DONE"
+          EOF
+
+          # Launch
+          INSTANCE_ID=$(aws ec2 run-instances \
+            --image-id $AMI_ID \
+            --instance-type t3.micro \
+            --key-name ${{ env.APP_NAME }}-key \
+            --security-group-ids ${{ steps.sg.outputs.sg_id }} \
+            --user-data file:///tmp/setup.sh \
+            --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=${{ env.APP_NAME }}-server}]" \
+            --query 'Instances[0].InstanceId' --output text)
+
+          echo "Waiting for EC2..."
+          aws ec2 wait instance-running --instance-ids $INSTANCE_ID
+
+          IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
+
+          echo "EC2 ready: $IP"
+          echo "ec2_ip=$IP" >> $GITHUB_OUTPUT
+
+      - name: Show Result
+        if: ${{ github.event.inputs.action == 'deploy' }}
+        run: |
+          echo "============================================="
+          echo "  INFRASTRUCTURE READY"
+          echo "============================================="
+          echo "  EC2 IP: ${{ steps.ec2.outputs.ec2_ip }}"
+          echo "  App URL: http://${{ steps.ec2.outputs.ec2_ip }}"
+          echo "  API URL: http://${{ steps.ec2.outputs.ec2_ip }}/api"
+          echo ""
+          echo "  Wait 2-3 min for EC2 setup to finish,"
+          echo "  then push code to main to deploy!"
+          echo "============================================="
+
+      # ═══════════ DESTROY ═══════════
+      - name: Destroy Resources
+        if: ${{ github.event.inputs.action == 'destroy' }}
+        run: |
+          echo "Destroying all resources..."
+
+          # EC2
+          ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=${{ env.APP_NAME }}-server" "Name=instance-state-name,Values=running,stopped" \
+            --query 'Reservations[0].Instances[0].InstanceId' --output text 2>/dev/null) || true
+          [ "$ID" != "None" ] && [ -n "$ID" ] && {
+            aws ec2 terminate-instances --instance-ids $ID
+            aws ec2 wait instance-terminated --instance-ids $ID
+            echo "EC2 terminated"
+          }
+
+          # Key pair
+          aws ec2 delete-key-pair --key-name ${{ env.APP_NAME }}-key 2>/dev/null || true
+          aws ssm delete-parameter --name /constructtrack/ec2-key 2>/dev/null || true
+
+          # Security group (wait a bit for EC2 to release)
+          sleep 5
+          VPC_ID=$(aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --query 'Vpcs[0].VpcId' --output text)
+          SG_ID=$(aws ec2 describe-security-groups \
+            --filters "Name=group-name,Values=${{ env.APP_NAME }}-sg" "Name=vpc-id,Values=$VPC_ID" \
+            --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null) || true
+          [ "$SG_ID" != "None" ] && [ -n "$SG_ID" ] && aws ec2 delete-security-group --group-id $SG_ID || true
+
+          # Old CF stack
+          aws cloudformation delete-stack --stack-name constructtrack-stack 2>/dev/null || true
+
+          echo "All resources destroyed!"
