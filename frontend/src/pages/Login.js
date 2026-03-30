@@ -84,7 +84,7 @@ const Login = () => {
         <div className="login-form-container">
           <div className="login-form-header">
             <h2>Sign In</h2>
-            <p>Enter your credentials to access your </p>
+            <p>Enter your credentials to access your project </p>
           </div>
 
           {error && <div className="login-error">{error}</div>}
