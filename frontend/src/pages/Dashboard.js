@@ -74,7 +74,7 @@ const Dashboard = () => {
   return (
     <div className="dashboard-page">
       <div className="dashboard-header">
-        <h1>Project Dashboard</h1>
+        <h1>MY Project Dashboard</h1>
         <p>Overview of all construction projects</p>
       </div>
 
