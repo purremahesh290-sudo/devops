@@ -75,7 +75,7 @@ const Login = () => {
           <h1 className="login-hero-title">ConstructTrack</h1>
           <p className="login-hero-subtitle">
             Your all-in-one construction project management solution.
-            Track progress, manage tasks, and keep your projects on schedule and under budget hi.
+            Track progress, manage tasks, and keep your projects on schedule and under budget.
           </p>
         </div>
       </div>
